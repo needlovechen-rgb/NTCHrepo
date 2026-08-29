@@ -1,0 +1,172 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String     @id @default(uuid())
+  username     String     @unique
+  email        String     @unique
+  name         String
+  role         String     @default("USER") // USER, TECH_MANAGER, ADMIN
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  events       Event[]
+  auditLogs    AuditLog[]
+}
+
+model Venue {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events    Event[]
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  key       String     @unique // audio, video, intercom, projection, other, lighting...
+  name      String     // 音響, 錄影音, INTERCOM, 投影器材, 其他...
+  sortOrder Int        @default(0)
+  enabled   Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  questions Question[]
+}
+
+model Question {
+  id                String            @id @default(uuid())
+  categoryId        String
+  key               String            @unique // video_recording, mic_wireless_count...
+  type              String            // dropdown, radio, checkbox, text, textarea, number, date
+  required          Boolean           @default(false)
+  enabled           Boolean           @default(true)
+  sortOrder         Int               @default(0)
+  currentVersionId  String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  category          Category          @relation(fields: [categoryId], references: [id])
+  versions          QuestionVersion[]
+  options           Option[]
+  sourceRules       ConditionalRule[]
+  answers           Answer[]
+}
+
+model QuestionVersion {
+  id          String    @id @default(uuid())
+  questionId  String
+  version     Int       @default(1)
+  title       String
+  description String?
+  type        String
+  required    Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  question    Question  @relation(fields: [questionId], references: [id])
+  answers     Answer[]
+}
+
+model Option {
+  id               String          @id @default(uuid())
+  questionId       String
+  currentVersionId String?
+  enabled          Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  question         Question        @relation(fields: [questionId], references: [id])
+  versions         OptionVersion[]
+  answers          Answer[]
+}
+
+model OptionVersion {
+  id        String   @id @default(uuid())
+  optionId  String
+  version   Int      @default(1)
+  label     String   // 顯示標籤，例：代錄影 HD
+  value     String   // 資料值，例：record_hd
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdBy String?
+  createdAt DateTime @default(now())
+  option    Option   @relation(fields: [optionId], references: [id])
+  answers   Answer[]
+}
+
+model ConditionalRule {
+  id                String   @id @default(uuid())
+  sourceQuestionId  String
+  operator          String   // equals, not_equals, contains, not_contains, greater_than, less_than, in, not_in
+  sourceValue       String   // JSON stringified value or plain string
+  action            String   // show, hide, enable, disable, required, optional
+  targetQuestionIds String   // JSON string array: ["q_video_camera_count", ...]
+  logicGroup        String?  // JSON stringified nested logic { conjunction: 'AND'|'OR', conditions: [...] }
+  enabled           Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  sourceQuestion    Question @relation(fields: [sourceQuestionId], references: [id])
+}
+
+model Event {
+  id            String          @id @default(uuid())
+  name          String          // 2026年度音樂會
+  eventDate     DateTime        // 演出日期
+  venueId       String?
+  formUser      String?         // 填表人
+  contactPerson String?         // 聯絡人
+  contactPhone  String?         // 聯絡電話
+  contactEmail  String?         // Email
+  notes         String?         // 備註
+  status        String          @default("draft") // draft, submitted, archived, approved, cancelled
+  createdBy     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  venue         Venue?          @relation(fields: [venueId], references: [id])
+  user          User?           @relation(fields: [createdBy], references: [id])
+  answers       Answer[]
+  snapshot      EventSnapshot?
+}
+
+model Answer {
+  id                String           @id @default(uuid())
+  eventId           String
+  questionId        String
+  questionVersionId String
+  optionId          String?
+  optionVersionId   String?
+  value             String           // JSON stringified or raw string
+  valueType         String           @default("option") // option, multi_option, text, number, date
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  event             Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  question          Question         @relation(fields: [questionId], references: [id])
+  questionVersion   QuestionVersion  @relation(fields: [questionVersionId], references: [id])
+  option            Option?          @relation(fields: [optionId], references: [id])
+  optionVersion     OptionVersion?   @relation(fields: [optionVersionId], references: [id])
+}
+
+model EventSnapshot {
+  id           String   @id @default(uuid())
+  eventId      String   @unique
+  snapshotData String   // JSON stringified complete form structure & answers at submission
+  createdAt    DateTime @default(now())
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String   // CREATE_QUESTION, UPDATE_VERSION, SOFT_DELETE_OPTION...
+  entityType String   // Category, Question, Option, ConditionalRule...
+  entityId   String
+  before     String?  // JSON stringified before state
+  after      String?  // JSON stringified after state
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+}
