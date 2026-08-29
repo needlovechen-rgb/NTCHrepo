@@ -19,14 +19,14 @@ AllowNoIcons=yes
 ; 輸出目錄與檔案名稱
 OutputDir=dist
 OutputBaseFilename=演出技術會議需求管理系統_安裝程式_v{#AppVersion}
-; 壓縮（lzma2 最高壓縮比）
+; 壓縮設定（lzma2 兼顧速度與壓縮比）
 Compression=lzma2/ultra64
 SolidCompression=yes
 ; 外觀
 WizardStyle=modern
-; 需要管理員權限以安裝至 Program Files
-PrivilegesRequired=admin
-; 64 位元
+; 使用者層級權限（無需管理員密碼，公用電腦可用，且 SQLite 有完整讀寫權限）
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 
@@ -46,10 +46,11 @@ Source: ".next\*"; DestDir: "{app}\app\.next"; Flags: ignoreversion recursesubdi
 ; ── node_modules ────────────────────────────────────────────
 Source: "node_modules\*"; DestDir: "{app}\app\node_modules"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; ── 設定檔 ─────────────────────────────────────────────────
+; ── 設定檔與伺服器核心 ──────────────────────────────────────
 Source: "package.json"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "next.config.mjs"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: ".env"; DestDir: "{app}\app"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "server.js"; DestDir: "{app}\app"; Flags: ignoreversion
 
 ; ── Prisma（結構描述 + 初始資料庫）─────────────────────────
 Source: "prisma\schema.prisma"; DestDir: "{app}\app\prisma"; Flags: ignoreversion
