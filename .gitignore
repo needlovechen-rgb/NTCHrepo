@@ -36,3 +36,9 @@ yarn-error.log*
 # database
 /prisma/*.db
 /prisma/*.db-journal
+
+# windows installer build outputs & runtime
+/dist/
+/_installer_build/
+/runtime/
+
